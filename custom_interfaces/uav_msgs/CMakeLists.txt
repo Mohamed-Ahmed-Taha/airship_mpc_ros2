@@ -13,10 +13,15 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/UAVPose.msg"
-  DEPENDENCIES std_msgs geometry_msgs
-)
+
+install(
+  FILES ros1_bridge_mapping_rules.yaml
+  DESTINATION share/${PROJECT_NAME})
+  
+  rosidl_generate_interfaces(${PROJECT_NAME}
+    "msg/UAVPose.msg"
+    DEPENDENCIES std_msgs geometry_msgs
+  )
 
 ament_package()
 

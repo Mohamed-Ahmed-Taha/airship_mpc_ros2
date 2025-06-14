@@ -19,6 +19,7 @@
   <depend>geometry_msgs</depend>
 
   <export>
+    <ros1_bridge mapping_rules="ros1_bridge_mapping_rules.yaml"/>
     <build_type>ament_cmake</build_type>
   </export>
 </package>
