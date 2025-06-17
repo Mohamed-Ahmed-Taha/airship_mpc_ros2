@@ -16,7 +16,7 @@ import os
 import numpy as np
 
 sys.path.append(os.path.dirname(__file__))
-import blimp_nmpc_formation_control.config.formation_config as FormationConfig
+import config.formation_config as FormationConfig
 
 W=FormationConfig.W
 W_blimp=FormationConfig.W_blimp
@@ -394,6 +394,7 @@ commandpub=None
 statepub=None
 vispub=None
 windpub=None
+obspub=None
 
 def param(s,default):
     if rclpy.has_param(s):
@@ -526,7 +527,7 @@ class MPC(object):
 
     def predict(self,updates,status):
         #global LOOKAHEAD,NAME,vispub,windpub,N
-        global NAME,vispub,windpub,N
+        global NAME, vispub, windpub, obspub, N
         if self.oldstate is None:
             return None
 
@@ -663,7 +664,8 @@ def OptimizationResultCallback(msg):
     command.covariance[2]=pv["z"]
     commandpub.publish(command)
 
-if __name__ == '__main__':
+def main():
+    global commandpub, statepub, vispub, obspub, windpub
     rclpy.init_node(NAME)
     NAME=rclpy.get_name()
     SELF=param(NAME+"/robotID",SELF)
@@ -687,3 +689,6 @@ if __name__ == '__main__':
     windpub = rclpy.Publisher(WINDTOPIC,PointStamped,queue_size=3)
     rclpy.spin()
     
+
+if __name__ == '__main__':
+    main()

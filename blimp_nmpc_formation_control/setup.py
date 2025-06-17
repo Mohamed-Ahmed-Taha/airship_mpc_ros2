@@ -6,7 +6,7 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(
-        include=["blimp_nmpc_formation_control.config"],
+        # include=["config"],
         exclude=["test"]
     ),
     data_files=[
