@@ -16,7 +16,7 @@ import os
 import numpy as np
 
 sys.path.append(os.path.dirname(__file__))
-import config.formation_config as FormationConfig
+import blimp_nmpc_formation_control.config.formation_config as FormationConfig
 
 W=FormationConfig.W
 W_blimp=FormationConfig.W_blimp
