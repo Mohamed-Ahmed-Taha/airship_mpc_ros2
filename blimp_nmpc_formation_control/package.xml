@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>blimp_nmpc_formation_control</name>
+  <version>0.0.0</version>
+  <description>Calculate and relay formation parameters to blimps</description>
+  <maintainer email="mohamed.a.m.i.taha@gmail.com">Mohamed-Taha</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>nmpc_blimp_formation_planner_msgs</depend>
+  <depend>uav_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

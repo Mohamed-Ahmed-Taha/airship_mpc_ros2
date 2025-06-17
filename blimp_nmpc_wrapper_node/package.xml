@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>blimp_nmpc_wrapper_node</name>
+  <version>0.0.0</version>
+  <description>The blimp_nmpc_wrapper_node package</description>
+  <maintainer email="mohamed.a.m.i.taha@gmail.com">Mohamed Taha</maintainer>
+  <license>Apache2.0</license>
+
+  <depend>rclpy</depend>
+
+  <depend>nmpc_blimp_formation_planner_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>uav_msgs</depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
