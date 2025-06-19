@@ -561,8 +561,8 @@ class MPC():
         trajectory.color.g = 1.0
         trajectory.color.b = 1.0
         trajectory.scale.x = 0.1
-        trajectory.scale.y = 0
-        trajectory.scale.z = 0
+        trajectory.scale.y = 0.0
+        trajectory.scale.z = 0.0
         trajectory.points = []
         trajectory.colors = []
         def addpoint(x,y,z,i,speed):
