@@ -32,7 +32,7 @@ def generate_launch_description():
                 'robotID': robot_id,
                 'numRobots': int(num_machines),
                 'PREFIX': '/machine_',
-                'POSETOPIC': 'throttledUAVPose',
+                # 'POSETOPIC': 'throttledUAVPose',
                 'use_sim_time': False,
                 'start_type_description_service': False
             }],

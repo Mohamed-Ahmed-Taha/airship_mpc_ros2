@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 
+import sys
+import os
 import math
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import tf_transformations as transformations
 from geometry_msgs.msg import Point, PointStamped, PoseWithCovarianceStamped, TwistWithCovarianceStamped
-# from sensor_msgs.msg import 
+# from sensor_msgs.msg import
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 from uav_msgs.msg import UAVPose
 from nmpc_blimp_formation_planner_msgs.msg import OptimizationParameters, OptimizationResult
-import sys
-import copy
-import os
-import numpy as np
+# import numpy as np
+# import copy
 
 sys.path.append(os.path.dirname(__file__))
 import config.formation_config as FormationConfig
@@ -83,7 +84,7 @@ class State(object):
                 tmp[key]=self[key] + other[key]
         else:
             for key in self._members:
-                tmp[key]=self.key + other
+                tmp[key]=self[key] + other
         return State(tmp)
 
     def __iadd__(self, other):
@@ -276,7 +277,7 @@ def rotateZ(v,a):
     return State(f)
 
 def rotateIntoCameraFrame(xv,u,p,xt,Wb):
-    global W_blimp
+    # global W_blimp
     g=9.81
     phi = math.atan2(u["PsiDot"]*Velh(xv,u,0),g)*Wb["PhiFactor"]
     theta = bound(-math.atan2(Velv(xv,u,p,dt,Wb),xv["Vh"])*Wb["ThetaFactor"],Wb["ThetaMin"],Wb["ThetaMax"])
@@ -343,12 +344,12 @@ def closestPoint(xv,u,p,xt,Wb):
     return pv + (cv * l)
 
 def costHVDE(x,u,p,t,Wb):
-        #global visualweights_blimp
-        global W
+    #global visualweights_blimp
+    # global W
 
-        tv = rotateIntoCameraFrame(x,u,p,t,Wb)
-        # this forms an elypsoid with it's axis defined by the main weights - around [camdist,0,0] 
-        return ((tv["x"]-Wb["CamDist"])*W["WeightDepthFactor"])**2 + (tv["y"])**2 + (tv["z"])**2
+    tv = rotateIntoCameraFrame(x,u,p,t,Wb)
+    # this forms an elypsoid with it's axis defined by the main weights - around [camdist,0,0] 
+    return ((tv["x"]-Wb["CamDist"])*W["WeightDepthFactor"])**2 + (tv["y"])**2 + (tv["z"])**2
 
 def costSoftConstraintMin(value,softMinimum,hardMinimum,weight):
     return (max( 0, softMinimum-value )*weight/math.fabs(hardMinimum-softMinimum))**2
@@ -358,8 +359,8 @@ def dopredict(z0,u,selfID):
     trajectory=[]
     X=initState(z0,selfID)*1.0
 
-    cost = 0
-    stateconstraint = 0
+    # cost = 0
+    # stateconstraint = 0
     P = initParameters(u[nu*N:],selfID)
     for t in range(0, N):
         ui0=t*nu
@@ -383,28 +384,23 @@ NAMESPACE_PREFIX="/machine_"
 MACHINES=FormationConfig.blimps #  MUST match solver definition
 OBSTACLECOUNT=0 # MUST match solver definition
 SELF=1
-NAME='blimp_nmpc_wrapper_node'
+NAME='blimp_nmpc_formation_controller'
 TIMESTEP=FormationConfig.dt # 0.25 seconds per set - MUST mach solver definition
 #LOOKAHEAD=int(2.0/TIMESTEP) #2 seconds into the future for command
-MPC=None
+# MPC=None
 PI=math.pi
 RATE=W["UpdateRate"]
 OLDSTATE=[]
-commandpub=None
-statepub=None
-vispub=None
-windpub=None
-obspub=None
-
-def param(s,default):
-    if rclpy.has_param(s):
-        return rclpy.get_param(s)
-    return default
-
+# commandpub=None
+# statepub=None
+# vispub=None
+# windpub=None
+# obspub=None
 
 command_blimp=["PsiDot"]
 
-class MPC(object):
+class MPC():
+    """The MPC solver class"""
     blimps=[]
     obstacles=[]
     target=[]
@@ -418,11 +414,12 @@ class MPC(object):
     oldcommand=[]
     newstate=None
 
-    def __init__(self,selfid,machines,numobstacles):
-        global W,NAME,W_blimp
+    def __init__(self, selfid, machines, numobstacles, node):
+        # global W, NAME, W_blimp
         self.selfid = selfid
         self.machines = machines
         self.numobstacles = numobstacles
+        self.node = node
 
         for a in range(machines):
             x=[10.0,10.0*a,W_blimp[a]["PzMaxSoft"],0.0,0.0,W_blimp[a]["VhMinSoft"],0.0,0.0,0.0,0.0,0.0]
@@ -446,7 +443,7 @@ class MPC(object):
         self.target[5]=z
 
     def set_blimp_pose(self,rID,x,y,z,psi,psidot,vh,vv,phi,theta):
-        global CAMH,CAMV,CAMD,NAME,CL,PHIFACTOR,THETAFACTOR,PFACTOR
+        # global CAMH, CAMV, CAMD, NAME, CL, PHIFACTOR, THETAFACTOR, PFACTOR
         self.blimps[rID-1][0]=x
         self.blimps[rID-1][1]=y
         self.blimps[rID-1][2]=z
@@ -479,19 +476,19 @@ class MPC(object):
         return self.quat_mult(self.quat_mult(q,r),q_conj)[1:]
 
     def process_blimppose(self,rID,pose):
-        global W,W_blimp
+        # global W, W_blimp
         (phi,theta,psi)=transformations.euler_from_quaternion([pose.orientation.y,-pose.orientation.x,pose.orientation.z,pose.orientation.w])
         centerpoint =  self.rotate_by_q([W_blimp[rID-1]["VehicleCenterX"],W_blimp[rID-1]["VehicleCenterY"],W_blimp[rID-1]["VehicleCenterZ"]], [pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z])
         psidot = pose.ang_velocity.z * math.pi/180.
         psidot = psidot*self.psidotlowpassalpha + self.blimps[rID-1][10]*(1.0-self.psidotlowpassalpha) # this is required, both for smoothing and since alpha does build up gradually, not instantly with changes in psidot
-        motion_direction=math.atan2(pose.velocity.y,pose.velocity.x)
-        real_alpha=psi-motion_direction
-        real_airspeed=math.sqrt(pose.velocity.x**2 + pose.velocity.y**2 + pose.velocity.z**2 )
-        real_Cl=psidot/(real_alpha*real_airspeed)
+        # motion_direction=math.atan2(pose.velocity.y,pose.velocity.x)
+        # real_alpha=psi-motion_direction
+        # real_airspeed=math.sqrt(pose.velocity.x**2 + pose.velocity.y**2 + pose.velocity.z**2 )
+        # real_Cl=psidot/(real_alpha*real_airspeed)
         airspeed=pose.poi.x
         airspeedH=airspeed # first order approximation, this is likely too low due to angle of attack
         if airspeed>=self.minAirspeedEpsilon and airspeed>abs(pose.velocity.z):
-            for a in range(3):  # iteratively estimate horizontal and vertical angle of attack
+            for _ in range(3):  # iteratively estimate horizontal and vertical angle of attack
                 alpha=psidot/(W_blimp[rID-1]["Cl"]*airspeed)
                 valpha = theta-math.asin(pose.velocity.z/airspeed)
                 airspeed=pose.poi.x/(math.cos(alpha)*math.cos(valpha))
@@ -510,7 +507,7 @@ class MPC(object):
         self.set_blimp_pose(rID,pose.position.x+centerpoint[0],pose.position.y+centerpoint[1],pZ,psi,psidot,vH,vV,phi,theta)
 
     def optimize(self):
-        global statepub,N
+        # global statepub, N
         self.newstate=[]
         self.newstate+=self.wind
         for o in self.obstacles:
@@ -523,11 +520,11 @@ class MPC(object):
         params.parameter=self.oldstate
         params.initial_guess=[1e-6]*(nu*N+nfp)
         params.initial_penalty=100.0
-        statepub.publish(params)
+        self.node.state_parameters_publisher.publish(params)
 
     def predict(self,updates,status):
-        #global LOOKAHEAD,NAME,vispub,windpub,N
-        global NAME, vispub, windpub, obspub, N
+        # global LOOKAHEAD, NAME, vispub, windpub, N
+        # global NAME, vispub, windpub, obspub, N
         if self.oldstate is None:
             return None
 
@@ -555,19 +552,19 @@ class MPC(object):
                 self.target[2],
                 closestPoint(x["blimp"][self.selfid-1],u["blimp"][self.selfid-1],p["blimp"][self.selfid-1],target,W_blimp[self.selfid-1])
                 )
-        trajectory=Marker()
-        trajectory.header.stamp=rclpy.Time.now()
-        trajectory.header.frame_id="world"
-        trajectory.type=Marker.LINE_STRIP
-        trajectory.color.a=1.0
-        trajectory.color.r=1.0
-        trajectory.color.g=1.0
-        trajectory.color.b=1.0
-        trajectory.scale.x=0.1
-        trajectory.scale.y=0
-        trajectory.scale.z=0
-        trajectory.points=[]
-        trajectory.colors=[]
+        trajectory = Marker()
+        trajectory.header.stamp = self.node.get_clock().now().to_msg()
+        trajectory.header.frame_id = "world"
+        trajectory.type = Marker.LINE_STRIP
+        trajectory.color.a = 1.0
+        trajectory.color.r = 1.0
+        trajectory.color.g = 1.0
+        trajectory.color.b = 1.0
+        trajectory.scale.x = 0.1
+        trajectory.scale.y = 0
+        trajectory.scale.z = 0
+        trajectory.points = []
+        trajectory.colors = []
         def addpoint(x,y,z,i,speed):
             a=Point()
             a.x=x
@@ -589,7 +586,7 @@ class MPC(object):
         for i in range(N):
             if (i%(max(N/10,1))==0):
                 addpoint(state_trajectory[i]["blimp"][self.selfid-1]["Px"],state_trajectory[i]["blimp"][self.selfid-1]["Py"],state_trajectory[i]["blimp"][self.selfid-1]["Pz"],0,state_trajectory[i]["blimp"][self.selfid-1]["Vh"])
-        vispub.publish(trajectory)
+        self.node.visual_markers_publisher.publish(trajectory)
         ma=MarkerArray()
         oid=0
         for o in self.obstacles:
@@ -597,7 +594,7 @@ class MPC(object):
             mo.ns="nmpsobstacles"
             mo.id=oid
             oid+=1
-            mo.header.stamp=rclpy.Time.now()
+            mo.header.stamp = self.node.get_clock().now().to_msg()
             mo.header.frame_id="world"
             mo.type=Marker.CYLINDER
             mo.color.a=1.0
@@ -612,83 +609,165 @@ class MPC(object):
             mo.pose.position.z=-25
             mo.pose.orientation.w=1.0
             ma.markers.append(mo)
-        obspub.publish(ma)
+        self.node.obstacle_publisher.publish(ma)
 
         wind=PointStamped()
         wind.header.frame_id="world"
-        wind.header.stamp=rclpy.Time.now()
+        wind.header.stamp = self.node.get_clock().now().to_msg()
         wind.point.x=self.wind[0]
         wind.point.y=self.wind[1]
         wind.point.z=self.wind[2]
-        windpub.publish(wind)
+        self.node.wind_debug_publisher.publish(wind)
         self.oldstate=None
         return result
-     
-def PoseCallback(msg, rID):
-    global MPC
-    MPC.process_blimppose(rID,msg)
 
-def TargetPoseCallback(msg):
-    global MPC
-    MPC.set_target_pose(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
+class BlimpNMPCNode(Node):
+    """blimp_nmpc_formation_controller node class"""
+    def __init__(self):
+        super().__init__('blimp_nmpc_formation_controller')
+        
+        qos = QoSProfile(
+            depth=10,
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST
+        )
+        
+        self.init_ros_parameters()
+        self.init_ros_publishers(qos)
+        self.init_ros_subscribers(qos)
+        
+        self.mpc = MPC(self.robot_id, self.num_machines, OBSTACLECOUNT, self)
+            
+    def init_ros_parameters(self):
+        """Initialize all ros node parameters and store them in the object"""
+        self.declare_parameter('robotID', 1)
+        self.declare_parameter('numRobots', 3)
+        self.declare_parameter('PREFIX', NAMESPACE_PREFIX)
+        # self.declare_parameter('POSETOPIC', POSETOPIC)
 
-def TargetTwistCallback(msg):
-    global MPC
-    MPC.set_target_twist(msg.twist.twist.linear.x,msg.twist.twist.linear.y,msg.twist.twist.linear.z)
-
-def OptimizationResultCallback(msg):
-    global MPC,commandpub,W_blimp
-
-    print("Received result: ",msg.status)
-    newstate=MPC.predict(msg.solution,msg.status)
-    if newstate is None or msg.status>=2:
-        print("Ignoring")
-        return
-
-    command=UAVPose()
-    command.header.stamp=rclpy.Time.now()
-    command.header.frame_id="world"
-    command.flightmode=4 #ROSBRIDGEMESSAGE_FLIGHTCONTROL_MODE_ROSCONTROL = 4
-    command.position.x=newstate[3]
-    command.position.y=newstate[4]
-    command.position.z=newstate[5]
-    command.velocity.x=newstate[0]
-    command.velocity.y=newstate[1]*180.0/math.pi
-    command.velocity.z=newstate[2]
-    command.poi.x=newstate[3]
-    command.poi.y=newstate[4]
-    command.poi.z=newstate[5]
-    pv=newstate[6]
-    command.covariance[0]=pv["x"]
-    command.covariance[1]=pv["y"]
-    command.covariance[2]=pv["z"]
-    commandpub.publish(command)
-
-def main():
-    global commandpub, statepub, vispub, obspub, windpub
-    rclpy.init_node(NAME)
-    NAME=rclpy.get_name()
-    SELF=param(NAME+"/robotID",SELF)
-    MACHINES=param(NAME+"/numRobots",MACHINES)
-    NAMESPACE_PREFIX=param(NAME+"/PREFIX",NAMESPACE_PREFIX)
-    # topic names set via params, since direct override isn't possible due to multi subscription
-    POSETOPIC=param(NAME+"/POSETOPIC",POSETOPIC)
-    MPC=MPC(SELF,MACHINES,obstacles)
-
-    subscribers=[]
-    for robot in range(1,MACHINES+1):
-        subscribers.append( rclpy.Subscriber(NAMESPACE_PREFIX+str(robot)+"/"+POSETOPIC,UAVPose,PoseCallback,robot,queue_size=3))
-    subscribers.append( rclpy.Subscriber(TARGETPOSETOPIC,PoseWithCovarianceStamped,TargetPoseCallback,queue_size=3))
-    subscribers.append( rclpy.Subscriber(TARGETTWISTTOPIC,TwistWithCovarianceStamped,TargetTwistCallback,queue_size=3))
-    subscribers.append( rclpy.Subscriber(MPCRESULTTOPIC,OptimizationResult,OptimizationResultCallback,queue_size=3))
-
-    commandpub = rclpy.Publisher(COMMANDTOPIC,UAVPose,queue_size=3)
-    statepub = rclpy.Publisher(MPCSTATETOPIC,OptimizationParameters,queue_size=3)
-    vispub = rclpy.Publisher(VISTOPIC,Marker,queue_size=3)
-    obspub = rclpy.Publisher(OBSTOPIC,MarkerArray,queue_size=3)
-    windpub = rclpy.Publisher(WINDTOPIC,PointStamped,queue_size=3)
-    rclpy.spin()
+        self.robot_id = self.get_parameter('robotID').value
+        self.num_machines = self.get_parameter('numRobots').value
+        self.namespace_prefix = self.get_parameter('PREFIX').value
+        # pose_topic = self.get_parameter('POSETOPIC').value        
     
+    def init_ros_publishers(self, qos):
+        """Initialize all ros publishers and store them in the object"""
+        complete_topic_prefix = self.namespace_prefix + str(self.robot_id) + "/"
+        self.command_publisher = self.create_publisher(msg_type=UAVPose, topic=(complete_topic_prefix + COMMANDTOPIC), qos_profile=qos)
+        self.state_parameters_publisher = self.create_publisher(msg_type=OptimizationParameters, topic=(complete_topic_prefix + MPCSTATETOPIC), qos_profile=qos)
+        self.visual_markers_publisher = self.create_publisher(msg_type=Marker, topic=(complete_topic_prefix + VISTOPIC), qos_profile=qos)
+        self.obstacle_publisher = self.create_publisher(msg_type=MarkerArray,  topic=(complete_topic_prefix + OBSTOPIC), qos_profile=qos)
+        self.wind_debug_publisher = self.create_publisher(msg_type=PointStamped, topic=(complete_topic_prefix + WINDTOPIC), qos_profile=qos)
+        
+    def init_ros_subscribers(self, qos):
+        """Initialize all ros subscribers and define their callback functions"""
+        for i in range(1, self.num_machines + 1):
+            self.create_subscription(
+                UAVPose,
+                self.namespace_prefix + str(i) + "/" + POSETOPIC,
+                lambda msg, rID=i: self.blimp_pose_callback(msg, rID),
+                qos
+            )
+        self.create_subscription(
+            PoseWithCovarianceStamped,
+            TARGETPOSETOPIC,
+            self.target_pose_callback,
+            qos
+        )
+        self.create_subscription(
+            TwistWithCovarianceStamped,
+            TARGETTWISTTOPIC,
+            self.target_twist_callback,
+            qos
+        )
+        self.create_subscription(
+            OptimizationResult,
+            self.namespace_prefix + str(self.robot_id) + "/" + MPCRESULTTOPIC,
+            self.optimization_result_callback,
+            qos
+        )
+        
+    def blimp_pose_callback(self, msg, r_id):
+        """Process updated pose of blimps"""
+        self.mpc.process_blimppose(r_id, msg)
+
+    def target_pose_callback(self, msg):
+        """Process updated pose of target"""
+        self.mpc.set_target_pose(
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            msg.pose.pose.position.z
+        )
+
+    def target_twist_callback(self, msg):
+        """Process updated twist of target"""
+        self.mpc.set_target_twist(
+            msg.twist.twist.linear.x,
+            msg.twist.twist.linear.y,
+            msg.twist.twist.linear.z
+        )
+        
+    def optimization_result_callback(self, msg):
+        """Process updated nmpc solver result"""
+        # global MPC,commandpub,W_blimp
+
+        print("Received result: ", msg.status)
+        newstate=self.mpc.predict(msg.solution, msg.status)
+        if newstate is None or msg.status >= 2:
+            print("Ignoring")
+            return
+
+        command = UAVPose()
+        command.header.stamp = self.get_clock().now().to_msg()
+        command.header.frame_id = "world"
+        command.flightmode = 4 #ROSBRIDGEMESSAGE_FLIGHTCONTROL_MODE_ROSCONTROL = 4
+        command.position.x = newstate[3]
+        command.position.y = newstate[4]
+        command.position.z = newstate[5]
+        command.velocity.x = newstate[0]
+        command.velocity.y = newstate[1]*180.0/math.pi
+        command.velocity.z = newstate[2]
+        command.poi.x = newstate[3]
+        command.poi.y = newstate[4]
+        command.poi.z = newstate[5]
+        pv = newstate[6]
+        command.covariance[0] = pv["x"]
+        command.covariance[1] = pv["y"]
+        command.covariance[2] = pv["z"]
+        self.command_publisher.publish(command)
+
+        
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = BlimpNMPCNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+    
+    # global commandpub, statepub, vispub, obspub, windpub
+    # rclpy.init_node(NAME)
+    # NAME=rclpy.get_name()
+    # SELF=param(NAME+"/robotID",SELF)
+    # MACHINES=param(NAME+"/numRobots",MACHINES)
+    # NAMESPACE_PREFIX=param(NAME+"/PREFIX",NAMESPACE_PREFIX)
+    # # topic names set via params, since direct override isn't possible due to multi subscription
+    # POSETOPIC=param(NAME+"/POSETOPIC",POSETOPIC)
+    # MPC=MPC(SELF,MACHINES,obstacles)
+
+    # subscribers=[]
+    # for robot in range(1,MACHINES+1):
+    #     subscribers.append( rclpy.Subscriber(NAMESPACE_PREFIX+str(robot)+"/"+POSETOPIC,UAVPose,PoseCallback,robot,queue_size=3))
+    # subscribers.append( rclpy.Subscriber(TARGETPOSETOPIC,PoseWithCovarianceStamped,TargetPoseCallback,queue_size=3))
+    # subscribers.append( rclpy.Subscriber(TARGETTWISTTOPIC,TwistWithCovarianceStamped,TargetTwistCallback,queue_size=3))
+    # subscribers.append( rclpy.Subscriber(MPCRESULTTOPIC,OptimizationResult,OptimizationResultCallback,queue_size=3))
+
+    # commandpub = rclpy.Publisher(COMMANDTOPIC,UAVPose,queue_size=3)
+    # statepub = rclpy.Publisher(MPCSTATETOPIC,OptimizationParameters,queue_size=3)
+    # vispub = rclpy.Publisher(VISTOPIC,Marker,queue_size=3)
+    # obspub = rclpy.Publisher(OBSTOPIC,MarkerArray,queue_size=3)
+    # windpub = rclpy.Publisher(WINDTOPIC,PointStamped,queue_size=3)
+    # rclpy.spin()
 
 if __name__ == '__main__':
     main()
