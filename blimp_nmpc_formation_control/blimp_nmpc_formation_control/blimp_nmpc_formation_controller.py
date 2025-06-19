@@ -482,19 +482,19 @@ class MPC(object):
         global W,W_blimp
         (phi,theta,psi)=transformations.euler_from_quaternion([pose.orientation.y,-pose.orientation.x,pose.orientation.z,pose.orientation.w])
         centerpoint =  self.rotate_by_q([W_blimp[rID-1]["VehicleCenterX"],W_blimp[rID-1]["VehicleCenterY"],W_blimp[rID-1]["VehicleCenterZ"]], [pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z])
-        psidot = pose.angVelocity.z * math.pi/180.
+        psidot = pose.ang_velocity.z * math.pi/180.
         psidot = psidot*self.psidotlowpassalpha + self.blimps[rID-1][10]*(1.0-self.psidotlowpassalpha) # this is required, both for smoothing and since alpha does build up gradually, not instantly with changes in psidot
         motion_direction=math.atan2(pose.velocity.y,pose.velocity.x)
         real_alpha=psi-motion_direction
         real_airspeed=math.sqrt(pose.velocity.x**2 + pose.velocity.y**2 + pose.velocity.z**2 )
         real_Cl=psidot/(real_alpha*real_airspeed)
-        airspeed=pose.POI.x
+        airspeed=pose.poi.x
         airspeedH=airspeed # first order approximation, this is likely too low due to angle of attack
         if airspeed>=self.minAirspeedEpsilon and airspeed>abs(pose.velocity.z):
             for a in range(3):  # iteratively estimate horizontal and vertical angle of attack
                 alpha=psidot/(W_blimp[rID-1]["Cl"]*airspeed)
                 valpha = theta-math.asin(pose.velocity.z/airspeed)
-                airspeed=pose.POI.x/(math.cos(alpha)*math.cos(valpha))
+                airspeed=pose.poi.x/(math.cos(alpha)*math.cos(valpha))
             if abs(alpha)<self.alphacutoff and abs(valpha)<self.alphacutoff:
                 # estimate wind only if estimated angle of attack is sane.
                 airspeedH=airspeed/math.cos(theta-valpha)
@@ -655,9 +655,9 @@ def OptimizationResultCallback(msg):
     command.velocity.x=newstate[0]
     command.velocity.y=newstate[1]*180.0/math.pi
     command.velocity.z=newstate[2]
-    command.POI.x=newstate[3]
-    command.POI.y=newstate[4]
-    command.POI.z=newstate[5]
+    command.poi.x=newstate[3]
+    command.poi.y=newstate[4]
+    command.poi.z=newstate[5]
     pv=newstate[6]
     command.covariance[0]=pv["x"]
     command.covariance[1]=pv["y"]
