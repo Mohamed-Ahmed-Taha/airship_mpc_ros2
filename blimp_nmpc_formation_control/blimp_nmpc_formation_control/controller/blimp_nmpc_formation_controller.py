@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
-import sys
-import os
+
+# import sys
+# import os
 import math
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from blimp_nmpc_formation_control.config import formation_config as FormationConfig
 import tf_transformations as transformations
 from geometry_msgs.msg import Point, PointStamped, PoseWithCovarianceStamped, TwistWithCovarianceStamped
 # from sensor_msgs.msg import
@@ -16,8 +18,7 @@ from nmpc_blimp_formation_planner_msgs.msg import OptimizationParameters, Optimi
 # import numpy as np
 # import copy
 
-sys.path.append(os.path.dirname(__file__))
-import config.formation_config as FormationConfig
+# sys.path.append(os.path.dirname(__file__))
 
 W=FormationConfig.W
 W_blimp=FormationConfig.W_blimp

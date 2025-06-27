@@ -8,7 +8,10 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(
-        # include=["config"],
+        include=[
+            'blimp_nmpc_formation_control',
+            'blimp_nmpc_formation_control.*',
+        ],
         exclude=["test"]
     ),
     data_files=[
@@ -26,7 +29,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'blimp_nmpc_formation_controller = blimp_nmpc_formation_control.blimp_nmpc_formation_controller:main'
+            'blimp_nmpc_formation_controller = blimp_nmpc_formation_control.controller.blimp_nmpc_formation_controller:main'
         ],
     },
 )
